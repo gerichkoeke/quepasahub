@@ -1,0 +1,190 @@
+// Prisma schema for Integrador Waha-Typebot
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @default(now()) @updatedAt
+
+  @@map("app_settings")
+}
+
+model SessionMapping {
+  id                  String   @id @default(uuid())
+  sessionId           String   @map("session_id")
+  typebotFlowId       String   @map("typebot_flow_id")
+  typebotHost         String   @map("typebot_host")
+  typebotApiKey       String?  @map("typebot_api_key")
+  chatwootBaseUrl     String?  @map("chatwoot_base_url") // Chatwoot instance URL
+  chatwootApiToken    String?  @map("chatwoot_api_token") // Chatwoot API access token
+  chatwootAccountId   String?  @map("chatwoot_account_id") // Chatwoot account ID
+  chatwootInboxId     String?  @map("chatwoot_inbox_id") // Chatwoot inbox ID
+  webhookToken        String?  @map("webhook_token")
+  publicToken         String?  @unique @map("public_token") // Token for public connection page
+  restartKeyword      String?  @map("restart_keyword")
+  sessionTimeout      Int?     @map("session_timeout") // Timeout in minutes
+  pauseOnTakeover     Boolean  @default(true) @map("pause_on_takeover") // Pause bot when owner takes over conversation
+  ownerResumeKeyword  String?  @map("owner_resume_keyword") // Keyword for owner to resume bot for a customer
+  enableGroups        Boolean  @default(false) @map("enable_groups") // Enable bot to work in WhatsApp groups
+  active              Boolean  @default(true)
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@index([sessionId, active])
+  @@map("session_mappings")
+}
+
+model TypebotSession {
+  id                String   @id @default(uuid())
+  sessionId         String   @map("session_id")
+  phone             String
+  typebotSessionId  String   @map("typebot_session_id")
+  lastMessageId     String?  @map("last_message_id")
+  botPaused         Boolean  @default(false) @map("bot_paused")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@unique([sessionId, phone])
+  @@index([sessionId])
+  @@map("typebot_sessions")
+}
+
+model QuepasaMapping {
+  id                        String   @id @default(uuid())
+  quepasaToken              String   @unique @map("quepasa_token") // Unique token for X-QUEPASA-TOKEN header
+  phoneNumber               String?  @unique @map("phone_number") // Quepasa phone number (optional, can be filled later)
+  name                      String // Friendly name for this mapping (required)
+  chatwootBaseUrl           String   @map("chatwoot_base_url") // Chatwoot instance URL
+  chatwootApiToken          String   @map("chatwoot_api_token") // Chatwoot API access token
+  chatwootAccountId         String   @map("chatwoot_account_id") // Chatwoot account ID
+  chatwootInboxId           String   @map("chatwoot_inbox_id") // Chatwoot inbox ID
+  chatwootInboxName         String?  @map("chatwoot_inbox_name") // Custom name for Chatwoot inbox (optional)
+  successNotificationSent   Boolean  @default(false) @map("success_notification_sent") // Track if success notification was sent
+  enableGroups              Boolean  @default(false) @map("enable_groups") // Enable receiving messages from WhatsApp groups
+  reopenClosedTickets       Boolean  @default(false) @map("reopen_closed_tickets") // Reopen closed tickets for returning customers
+  showAgentName             Boolean  @default(false) @map("show_agent_name") // Show agent name in messages sent to WhatsApp
+  maxMessageAgeMinutes      Int      @default(5) @map("max_message_age_minutes") // Ignore messages older than this (to avoid processing sync messages on connection)
+  active                    Boolean  @default(true)
+  createdAt                 DateTime @default(now()) @map("created_at")
+  updatedAt                 DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@index([phoneNumber, active])
+  @@map("quepasa_mappings")
+}
+
+enum Direction {
+  in
+  out
+}
+
+enum Provider {
+  waha
+  typebot
+  quepasa
+  chatwoot
+}
+
+model EventLog {
+  id        String   @id @default(uuid())
+  direction Direction
+  provider  Provider
+  sessionId String?  @map("session_id")
+  peer      String?
+  payload   Json
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([sessionId, createdAt])
+  @@index([createdAt])
+  @@map("event_logs")
+}
+
+model TypebotFlow {
+  id                  String   @id @default(uuid())
+  name                String   @unique
+  typebotId           String   @map("typebot_id")
+  typebotHost         String   @map("typebot_host")
+  apiToken            String?  @map("api_token")
+  prefilledVariables  Json?    @map("prefilled_variables") // JSON object with user variables
+  resultIdTemplate    String?  @map("result_id_template") // Template for resultId (e.g., "user-{userId}")
+  sessionIdTemplate   String?  @map("session_id_template") // Template for sessionId
+  storageType         String   @default("local") @map("storage_type") // "local" or "session"
+  enableCallbacks     Boolean  @default(false) @map("enable_callbacks")
+  onAnswerUrl         String?  @map("on_answer_url") // Webhook URL for onAnswer callback
+  onInitUrl           String?  @map("on_init_url") // Webhook URL for onInit callback
+  onEndUrl            String?  @map("on_end_url") // Webhook URL for onEnd callback
+  active              Boolean  @default(true)
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("typebot_flows")
+}
+
+// Chatwoot Contact Cache
+model ChatwootContact {
+  id                String   @id @default(uuid())
+  quepasaMappingId  String   @map("quepasa_mapping_id") // FK to QuepasaMapping
+  chatwootContactId Int      @map("chatwoot_contact_id") // Contact ID in Chatwoot
+  quepasaJid        String   @map("quepasa_jid") // WhatsApp JID (e.g., 5561999999999@s.whatsapp.net)
+  phoneE164         String   @map("phone_e164") // Phone in E.164 format
+  name              String?  // Contact name
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@unique([quepasaMappingId, quepasaJid])
+  @@unique([quepasaMappingId, chatwootContactId])
+  @@index([phoneE164])
+  @@map("chatwoot_contacts")
+}
+
+// Chatwoot Conversation Mapping
+model ChatwootConversation {
+  id                      String   @id @default(uuid())
+  quepasaMappingId        String   @map("quepasa_mapping_id") // FK to QuepasaMapping
+  chatwootConversationId  Int      @map("chatwoot_conversation_id") // Conversation ID in Chatwoot
+  chatwootContactId       Int      @map("chatwoot_contact_id") // Contact ID in Chatwoot
+  quepasaConversationId   String?  @map("quepasa_conversation_id") // Quepasa conversation ID (if provided)
+  quepasaJid              String   @map("quepasa_jid") // WhatsApp JID
+  status                  String   @default("open") // open, resolved, pending
+  createdAt               DateTime @default(now()) @map("created_at")
+  updatedAt               DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@unique([quepasaMappingId, chatwootConversationId])
+  @@index([quepasaMappingId, quepasaJid, status])
+  @@map("chatwoot_conversations")
+}
+
+// Processed Messages (Idempotency)
+model ProcessedMessage {
+  id                String   @id @default(uuid())
+  quepasaMappingId  String   @map("quepasa_mapping_id") // FK to QuepasaMapping
+  externalId        String   @map("external_id") // message_id from Quepasa or Chatwoot
+  source            String   // "quepasa" or "chatwoot"
+  direction         String   // "incoming" or "outgoing"
+  processedAt       DateTime @default(now()) @map("processed_at")
+
+  @@unique([quepasaMappingId, externalId, source])
+  @@index([externalId])
+  @@index([processedAt])
+  @@map("processed_messages")
+}
+
+// Message ID Mappings (for WhatsApp Reply functionality)
+model MessageMapping {
+  id                  Int      @id @default(autoincrement())
+  chatwootMessageId   Int      @unique @map("chatwootMessageId")
+  quepasaMessageId    String   @map("quepasaMessageId")
+  conversationId      Int      @map("conversationId")
+  createdAt           DateTime @default(now()) @map("createdAt")
+
+  @@index([chatwootMessageId])
+  @@index([conversationId])
+  @@map("message_mappings")
+}
