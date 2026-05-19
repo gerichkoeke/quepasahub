@@ -142,6 +142,12 @@ router.post('/webhooks/quepasa/:token', async (req, res, next) => {
         chatwootApiToken: true,
         chatwootAccountId: true,
         chatwootInboxId: true,
+        useTypebot: true,
+        typebotFlowId: true,
+        typebotHost: true,
+        typebotApiKey: true,
+        closingMessage: true,
+        returnWebhookUrl: true,
         enableGroups: true,
         reopenClosedTickets: true,
         showAgentName: true,
@@ -210,6 +216,84 @@ router.post('/webhooks/quepasa/:token', async (req, res, next) => {
     if (isGroup && !quepasaMapping.enableGroups) {
       logger.info({ fromNumber, isGroup, mappingId: quepasaMapping.id }, 'Ignoring group message - groups not enabled for this mapping');
       return res.json({ success: true, message: 'Group message ignored (groups not enabled)' });
+    }
+
+    // Process Typebot if enabled and this is not a group message (Typebot usually for DMs)
+    if (quepasaMapping.useTypebot && quepasaMapping.typebotFlowId && !isGroup) {
+      try {
+        const { typebotClient } = require('../clients/typebot.client');
+        await typebotClient.initialize();
+        
+        const userId = fromNumber.replace(/\D/g, ''); // Clean phone number for userId
+
+        let typebotSessionId: string | undefined;
+        let letTypebotHandle = true;
+
+        // Check if there is an existing bot session paused
+        const existingSession = await prisma.typebotSession.findFirst({
+          where: { phone: userId } // Simplified check
+        });
+
+        if (existingSession?.botPaused) {
+           letTypebotHandle = false; // BOT PAUSED, PASS TO CHATWOOT
+           logger.info({ userId }, 'Typebot paused, handing over to Chatwoot');
+        } else {
+           // Send to typebot
+           logger.info({ userId }, 'Sending message to Typebot');
+           
+           let typebotResponse;
+           if (!existingSession) {
+             typebotResponse = await typebotClient.startChat(
+               quepasaMapping.typebotFlowId,
+               userId,
+               messageText,
+               quepasaMapping.typebotHost,
+               quepasaMapping.typebotApiKey || undefined
+             );
+             // create mapping
+             await prisma.typebotSession.create({
+                data: {
+                  sessionId: quepasaMapping.quepasaToken,
+                  phone: userId,
+                  typebotSessionId: typebotResponse.sessionId,
+                  lastMessageId: messageId || '',
+                }
+             });
+           } else {
+             typebotResponse = await typebotClient.continueChat(
+               existingSession.typebotSessionId,
+               messageText,
+               quepasaMapping.typebotHost,
+               quepasaMapping.typebotApiKey || undefined
+             );
+           }
+
+           // Ensure Quepasa Client is initialized
+           await quepasaClient.initialize();
+           let chatId = fromNumber;
+
+           // Send Typebot responses via Quepasa
+           for (const tMsg of typebotResponse.messages) {
+               if (tMsg.type === 'text') {
+                 await quepasaClient.sendTextMessage(token, chatId, tMsg.content);
+               } else {
+                 await quepasaClient.sendMediaMessage(token, chatId, {
+                   url: tMsg.content,
+                   mime: tMsg.type === 'image' ? 'image/jpeg' : 'application/octet-stream',
+                   filename: 'media',
+                   text: tMsg.caption
+                 });
+               }
+           }
+
+           // Note: if typebot completes or there's handover block, logic can be added here
+           // For now, if typebot handles it, we don't send to Chatwoot (or we send as silent text).
+           // We will return early to drop Chatwoot if Typebot is fully responsive.
+           return res.json({ success: true, processedByTypebot: true });
+        }
+      } catch (err: any) {
+        logger.error({ error: err.message }, 'Typebot processing failed, falling back to chatwoot');
+      }
     }
 
     // Build Chatwoot config from mapping
@@ -702,9 +786,50 @@ router.post('/webhooks/chatwoot/:token', async (req, res, next) => {
       },
     });
 
-    // We only care about message_created events with outgoing messages
+    // Handle conversation resolved event
+    if (payload.event === 'conversation_status_changed' && payload.status === 'resolved') {
+      logger.info({ conversationId: payload.conversation?.id }, 'Conversation resolved in Chatwoot');
+      
+      const quepasaMapping = await prisma.quepasaMapping.findFirst({
+        where: { quepasaToken: token, active: true }
+      });
+      
+      if (quepasaMapping) {
+        let phoneNumber = payload.conversation?.meta?.sender?.phone_number || payload.conversation?.meta?.sender?.identifier;
+        if (phoneNumber) {
+          let chatId = phoneNumber.includes('@g.us') ? phoneNumber : phoneNumber.replace(/@.*$/, '');
+          
+          await quepasaClient.initialize();
+          
+          // Send closing message if configured
+          if (quepasaMapping.closingMessage) {
+            await quepasaClient.sendTextMessage(token, chatId, quepasaMapping.closingMessage);
+            logger.info({ chatId }, 'Sent closing message to user');
+          }
+          
+          // Call return webhook if configured
+          if (quepasaMapping.returnWebhookUrl) {
+            try {
+              const axios = require('axios');
+              await axios.post(quepasaMapping.returnWebhookUrl, {
+                event: 'ticket_resolved',
+                chatId,
+                mappingId: quepasaMapping.id,
+                conversationId: payload.conversation?.id
+              });
+              logger.info({ webhookUrl: quepasaMapping.returnWebhookUrl }, 'Fired return webhook function');
+            } catch (err: any) {
+              logger.error({ error: err.message }, 'Failed to trigger return webhook');
+            }
+          }
+        }
+      }
+      return res.json({ success: true, message: 'Processed resolved conversation' });
+    }
+
+    // We only care about message_created events with outgoing messages for standard message processing
     if (payload.event !== 'message_created') {
-      logger.debug({ event: payload.event }, 'Ignoring non-message event');
+      logger.debug({ event: payload.event }, 'Ignoring non-message/non-resolution event');
       return res.json({ success: true, message: 'Event ignored' });
     }
 

@@ -67,11 +67,17 @@ model QuepasaMapping {
   chatwootAccountId         String   @map("chatwoot_account_id") // Chatwoot account ID
   chatwootInboxId           String   @map("chatwoot_inbox_id") // Chatwoot inbox ID
   chatwootInboxName         String?  @map("chatwoot_inbox_name") // Custom name for Chatwoot inbox (optional)
+  closingMessage            String?  @map("closing_message") // Mensagem enviada ao finalizar chamado
+  returnWebhookUrl          String?  @map("return_webhook_url") // Webhook de retorno/finalização
+  useTypebot                Boolean  @default(false) @map("use_typebot") // Enable typebot integration
+  typebotFlowId             String?  @map("typebot_flow_id") // ID do fluxo do typebot
+  typebotHost               String?  @map("typebot_host") // URL do typebot
+  typebotApiKey             String?  @map("typebot_api_key") // (Opcional) Chave da API do typebot
   successNotificationSent   Boolean  @default(false) @map("success_notification_sent") // Track if success notification was sent
   enableGroups              Boolean  @default(false) @map("enable_groups") // Enable receiving messages from WhatsApp groups
   reopenClosedTickets       Boolean  @default(false) @map("reopen_closed_tickets") // Reopen closed tickets for returning customers
   showAgentName             Boolean  @default(false) @map("show_agent_name") // Show agent name in messages sent to WhatsApp
-  maxMessageAgeMinutes      Int      @default(5) @map("max_message_age_minutes") // Ignore messages older than this (to avoid processing sync messages on connection)
+  maxMessageAgeMinutes      Int      @default(5) @map("max_message_age_minutes") // Ignore messages older than this
   active                    Boolean  @default(true)
   createdAt                 DateTime @default(now()) @map("created_at")
   updatedAt                 DateTime @default(now()) @updatedAt @map("updated_at")
@@ -86,7 +92,6 @@ enum Direction {
 }
 
 enum Provider {
-  waha
   typebot
   quepasa
   chatwoot

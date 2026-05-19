@@ -83,6 +83,12 @@ export const Sessions: React.FC = () => {
     chatwootApiToken: '',
     chatwootAccountId: '',
     chatwootInboxName: '',
+    closingMessage: '',
+    returnWebhookUrl: '',
+    useTypebot: false,
+    typebotFlowId: '',
+    typebotHost: '',
+    typebotApiKey: '',
     enableGroups: false,
     reopenClosedTickets: false,
     showAgentName: false,
@@ -456,6 +462,12 @@ export const Sessions: React.FC = () => {
             chatwootApiToken: chatwootForm.chatwootApiToken,
             chatwootAccountId: chatwootForm.chatwootAccountId,
             chatwootInboxName: chatwootForm.chatwootInboxName || undefined,
+            closingMessage: chatwootForm.closingMessage || undefined,
+            returnWebhookUrl: chatwootForm.returnWebhookUrl || undefined,
+            useTypebot: chatwootForm.useTypebot,
+            typebotFlowId: chatwootForm.typebotFlowId || undefined,
+            typebotHost: chatwootForm.typebotHost || undefined,
+            typebotApiKey: chatwootForm.typebotApiKey || undefined,
             enableGroups: chatwootForm.enableGroups,
             sendQRToChatwoot: true,
           };
@@ -509,6 +521,12 @@ export const Sessions: React.FC = () => {
         chatwootBaseUrl: chatwootForm.chatwootBaseUrl,
         chatwootAccountId: chatwootForm.chatwootAccountId,
         chatwootInboxName: chatwootForm.chatwootInboxName || undefined,
+        closingMessage: chatwootForm.closingMessage || undefined,
+        returnWebhookUrl: chatwootForm.returnWebhookUrl || undefined,
+        useTypebot: chatwootForm.useTypebot,
+        typebotFlowId: chatwootForm.typebotFlowId || undefined,
+        typebotHost: chatwootForm.typebotHost || undefined,
+        typebotApiKey: chatwootForm.typebotApiKey || undefined,
         enableGroups: chatwootForm.enableGroups,
         reopenClosedTickets: chatwootForm.reopenClosedTickets,
         showAgentName: chatwootForm.showAgentName,
@@ -566,6 +584,12 @@ export const Sessions: React.FC = () => {
       chatwootApiToken: hasChatwootConfigured ? '••••••••••••••' : '', // Show dots if token exists
       chatwootAccountId: mapping.chatwootAccountId !== 'pending' ? mapping.chatwootAccountId : '',
       chatwootInboxName: mapping.chatwootInboxName || '',
+      closingMessage: mapping.closingMessage || '',
+      returnWebhookUrl: mapping.returnWebhookUrl || '',
+      useTypebot: mapping.useTypebot || false,
+      typebotFlowId: mapping.typebotFlowId || '',
+      typebotHost: mapping.typebotHost || '',
+      typebotApiKey: mapping.typebotApiKey || '',
       enableGroups: mapping.enableGroups || false,
       reopenClosedTickets: mapping.reopenClosedTickets || false,
       showAgentName: mapping.showAgentName || false,
@@ -1088,6 +1112,87 @@ export const Sessions: React.FC = () => {
                         Nome personalizado para a caixa de entrada no Chatwoot
                       </p>
                     </div>
+
+                      <div className="mt-4 border-t pt-4">
+                        <h4 className="font-medium text-gray-800 mb-2">Finalização & Webhook</h4>
+                        
+                        <label className="block text-sm font-medium text-gray-700 mb-1 mt-2">
+                          Mensagem de Finalização de Atendimento
+                        </label>
+                        <textarea
+                          value={chatwootForm.closingMessage}
+                          onChange={(e) => setChatwootForm({ ...chatwootForm, closingMessage: e.target.value })}
+                          placeholder="Mensagem enviada quando o ticket for resolvido"
+                          className="w-full px-3 py-2 border rounded-lg"
+                          rows={2}
+                        />
+
+                        <label className="block text-sm font-medium text-gray-700 mb-1 mt-3">
+                          Webhook de Retorno (Opcional)
+                        </label>
+                        <input
+                          type="url"
+                          value={chatwootForm.returnWebhookUrl}
+                          onChange={(e) => setChatwootForm({ ...chatwootForm, returnWebhookUrl: e.target.value })}
+                          placeholder="https://seu-webhook.com/return"
+                          className="w-full px-3 py-2 border rounded-lg"
+                        />
+                      </div>
+
+                      <div className="mt-4 border-t pt-4">
+                        <h4 className="font-medium text-gray-800 mb-2">Integração Typebot</h4>
+                        
+                        <label className="flex items-center space-x-2 mt-2">
+                          <input
+                            type="checkbox"
+                            checked={chatwootForm.useTypebot}
+                            onChange={(e) => setChatwootForm({ ...chatwootForm, useTypebot: e.target.checked })}
+                            className="rounded border-gray-300 text-primary focus:ring-primary"
+                          />
+                          <span className="text-sm text-gray-700">Habilitar Typebot (antes de enviar para Chatwoot)</span>
+                        </label>
+
+                        {chatwootForm.useTypebot && (
+                          <div className="pl-4 mt-3 space-y-3 border-l-2 border-gray-200">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                URL do Typebot
+                              </label>
+                              <input
+                                type="url"
+                                value={chatwootForm.typebotHost}
+                                onChange={(e) => setChatwootForm({ ...chatwootForm, typebotHost: e.target.value })}
+                                placeholder="https://typebot.exemplo.com"
+                                className="w-full px-3 py-2 border rounded-lg"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Nome do Fluxo (Flow ID)
+                              </label>
+                              <input
+                                type="text"
+                                value={chatwootForm.typebotFlowId}
+                                onChange={(e) => setChatwootForm({ ...chatwootForm, typebotFlowId: e.target.value })}
+                                placeholder="meu-fluxo-v1"
+                                className="w-full px-3 py-2 border rounded-lg"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                API Key (Opcional)
+                              </label>
+                              <input
+                                type="password"
+                                value={chatwootForm.typebotApiKey}
+                                onChange={(e) => setChatwootForm({ ...chatwootForm, typebotApiKey: e.target.value })}
+                                className="w-full px-3 py-2 border rounded-lg"
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
                   </>
                 )}
 

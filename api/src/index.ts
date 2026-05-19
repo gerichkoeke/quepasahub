@@ -10,9 +10,7 @@ import { errorMiddleware } from './middlewares/error.middleware';
 // Import routes
 import healthRoutes from './routes/health.routes';
 import settingsRoutes from './routes/settings.routes';
-import wahaRoutes from './routes/waha.routes';
 import mappingsRoutes from './routes/mappings.routes';
-import webhookRoutes from './routes/webhook.routes';
 import quepasaRoutes from './routes/quepasa.routes';
 import quepasaWebhookRoutes from './routes/quepasa-webhook.routes';
 import quepasaMappingsRoutes from './routes/quepasa-mappings.routes';
@@ -50,9 +48,7 @@ app.use('/', healthRoutes);
 app.use('/', publicRoutes); // Public routes without auth
 app.use('/', mediaRoutes); // Serve converted audio files (public)
 app.use('/', settingsRoutes);
-app.use('/', wahaRoutes);
 app.use('/', mappingsRoutes);
-app.use('/', webhookRoutes);
 app.use('/', quepasaRoutes); // Quepasa connection and QR code routes
 app.use('/', quepasaWebhookRoutes); // Quepasa-Chatwoot integration webhooks
 app.use('/', quepasaMappingsRoutes); // Quepasa mappings CRUD

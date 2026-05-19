@@ -26,7 +26,7 @@ export interface EventLog {
   sessionId: string;
   peer: string;
   direction: 'in' | 'out';
-  provider: 'waha' | 'typebot';
+  provider: 'typebot' | 'quepasa' | 'chatwoot';
   payload: Record<string, any>;
   createdAt: string;
 }
@@ -65,8 +65,6 @@ export interface TopSession {
 }
 
 export interface Settings {
-  waha_host: string;
-  waha_api_key: string;
   quepasa_url?: string;
   quepasa_user?: string;
   quepasa_password?: string;
@@ -107,10 +105,16 @@ export interface QuepasaMapping {
   chatwootAccountId: string;
   chatwootInboxId: string;
   chatwootInboxName?: string; // Custom name for Chatwoot inbox
+  closingMessage?: string; // Mensagem de finalização
+  returnWebhookUrl?: string; // Webhook de retorno
+  useTypebot: boolean;
+  typebotFlowId?: string;
+  typebotHost?: string;
+  typebotApiKey?: string;
   enableGroups: boolean; // Enable receiving messages from WhatsApp groups
   reopenClosedTickets: boolean; // Reopen closed tickets for returning customers
   showAgentName: boolean; // Show agent name in messages sent to WhatsApp
-  maxMessageAgeMinutes: number; // Ignore messages older than this (to avoid processing sync messages on connection)
+  maxMessageAgeMinutes: number; // Ignore messages older than this
   active: boolean;
   createdAt: string;
   updatedAt: string;
@@ -124,10 +128,16 @@ export interface CreateQuepasaMappingRequest {
   chatwootAccountId?: string;
   chatwootInboxId?: string;
   chatwootInboxName?: string; // Custom name for Chatwoot inbox
+  closingMessage?: string;
+  returnWebhookUrl?: string;
+  useTypebot?: boolean;
+  typebotFlowId?: string;
+  typebotHost?: string;
+  typebotApiKey?: string;
   enableGroups?: boolean; // Enable receiving messages from WhatsApp groups
   reopenClosedTickets?: boolean; // Reopen closed tickets for returning customers
   showAgentName?: boolean; // Show agent name in messages sent to WhatsApp
-  maxMessageAgeMinutes?: number; // Ignore messages older than this (to avoid processing sync messages on connection)
+  maxMessageAgeMinutes?: number; // Ignore messages older than this
   active?: boolean;
 }
 
